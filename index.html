@@ -78,7 +78,7 @@
   <div class="card">
     <div class="label">안내</div>
     <ol class="steps">
-      <li>스마트폰 기본 브라우저에서 이 페이지를 여세요.</li>
+      <li><b>Chrome</b>(삼성브라우저 아님)에서 이 페이지를 여세요.</li>
       <li>[알림 받기] → 허용. 매일 밤 '내일 조출 여부'가 알림으로 옵니다.</li>
       <li>알림을 놓쳐도, 이 페이지를 열면 최신 결과가 위에 표시됩니다.</li>
       <li>홈 화면에 추가해두면 앱처럼 편합니다.</li>
@@ -105,40 +105,63 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 // 저장된 최신 조출 브리핑 표시
-async function showLastBriefing() {
+// 중계에서 조출 상태를 JSONP 로 읽는다(CORS 회피).
+function jsonpStatus() {
+  return new Promise((resolve) => {
+    if (!RELAY_POST_URL || RELAY_POST_URL.indexOf('여기에') === 0) { resolve(null); return; }
+    const cb = '__st' + Date.now() + Math.floor(Math.random() * 1000);
+    let done = false;
+    const s = document.createElement('script');
+    function cleanup() { try { delete window[cb]; } catch (e) { window[cb] = undefined; } if (s.parentNode) s.parentNode.removeChild(s); }
+    window[cb] = (data) => { if (done) return; done = true; cleanup(); resolve(data); };
+    s.onerror = () => { if (done) return; done = true; cleanup(); resolve(null); };
+    s.src = RELAY_POST_URL + (RELAY_POST_URL.indexOf('?') >= 0 ? '&' : '?') + 'status=1&callback=' + cb + '&_=' + Date.now();
+    document.head.appendChild(s);
+    setTimeout(() => { if (!done) { done = true; cleanup(); resolve(null); } }, 8000);
+  });
+}
+
+const WK = ['일', '월', '화', '수', '목', '금', '토'];
+function renderBriefing(d) {
   const big = document.getElementById('heroBig');
   const detail = document.getElementById('heroDetail');
   const when = document.getElementById('heroWhen');
+  if (!d || !d.date) {
+    hero.className = 'card hero none';
+    big.textContent = '아직 브리핑이 없어요';
+    detail.textContent = '평일 오전 9시에 자동으로 여기에 표시됩니다.';
+    when.textContent = '';
+    return;
+  }
+  const dt = new Date(d.date + 'T00:00:00');
+  const md = (dt.getMonth() + 1) + '/' + dt.getDate() + '(' + WK[dt.getDay()] + ')';
+  if (d.hasEarly) {
+    hero.className = 'card hero warn';
+    big.textContent = md + ' 조출 있음 ⚠️';
+    detail.textContent = (d.body || '') + '\n조기출근 준비하세요.';
+  } else {
+    hero.className = 'card hero ok';
+    big.textContent = md + ' 조출 없음';
+    detail.textContent = d.body || '정상 출근.';
+  }
+  when.textContent = d.at ? ('확인: ' + d.at) : '';
+}
+
+async function showLastBriefing() {
+  const s = await jsonpStatus();
+  if (s && s.date) { renderBriefing(s); return; }
+  // 폴백: 푸시로 저장된 값
   try {
     const cache = await caches.open('briefing');
     const res = await cache.match('/last');
-    if (!res) {
-      hero.className = 'card hero none';
-      big.textContent = '아직 브리핑이 없어요';
-      detail.textContent = '매일 밤 자동으로 여기에 표시됩니다.';
-      when.textContent = '';
+    if (res) {
+      const d = await res.json();
+      renderBriefing({ date: d.date, hasEarly: (d.title || '').indexOf('있음') >= 0, body: d.body,
+        at: d.at ? new Date(d.at).toLocaleString('ko-KR') : '' });
       return;
     }
-    const d = await res.json();
-    const n = new Date();
-    const todayISO = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
-    if (d.date && d.date >= todayISO) {
-      // 다가오는 조출
-      hero.className = 'card hero warn';
-      big.textContent = (d.title || '').replace('🎾 ', '');
-      detail.textContent = d.body || '';
-      when.textContent = d.at ? ('받은 시각: ' + new Date(d.at).toLocaleString('ko-KR')) : '';
-    } else {
-      // 예정된 조출 없음
-      hero.className = 'card hero ok';
-      big.textContent = '예정된 조출 없음';
-      detail.textContent = d.date ? ('최근 조출: ' + d.date) : '아직 조출 알림이 없습니다.';
-      when.textContent = d.at ? ('마지막 알림: ' + new Date(d.at).toLocaleString('ko-KR')) : '';
-    }
-  } catch (e) {
-    big.textContent = '표시 오류';
-    detail.textContent = String(e);
-  }
+  } catch (e) {}
+  renderBriefing(null);
 }
 
 async function sendToRelay(sub) {
