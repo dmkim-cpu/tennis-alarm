@@ -4,39 +4,44 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b7a3b">
-<title>화명 테니스장 예약알리미</title>
+<title>화명 테니스장 조출 알리미</title>
 <script>
-  /* ===== 설정 — 관리자(당신)가 채우는 곳 ===== */
-  // 1) gen_vapid.py 실행 후 출력된 '공개키'
   const VAPID_PUBLIC_KEY = "BLhLqsvJb80wlgEiTJ25wTARHbKqq-pik22FGoPPAgQ7yao2HKpxuSwwTlyOIFBizUBqn184tECTYnq3-RXFisQ";
-  // 2) 앱스스크립트 배포 후 받은 웹앱 URL(.../exec). 비워두면 수동(코드 복사) 모드로 동작.
   const RELAY_POST_URL   = "https://script.google.com/macros/s/AKfycbwPo3Iba5PZauiZ8QGGFyQeC1d_iiy-FoP87wHTIew-zWTt653FSbfKoogI_STxdOGJ/exec";
 </script>
 <style>
-  :root { --green:#0b7a3b; --green-d:#095e2e; --bg:#f4f6f5; --card:#fff; --line:#e3e7e5; --text:#1c2620; --muted:#6b7770; }
+  :root { --green:#0b7a3b; --green-d:#095e2e; --bg:#f4f6f5; --card:#fff; --line:#e3e7e5; --text:#1c2620; --muted:#6b7770; --warn:#c9411f; --warnbg:#fdeee9; --okbg:#e7f6ec; }
   * { box-sizing:border-box; }
-  body { margin:0; font-family:-apple-system,"Malgun Gothic","맑은 고딕",system-ui,sans-serif;
-         background:var(--bg); color:var(--text); line-height:1.6; }
-  .wrap { max-width:520px; margin:0 auto; padding:20px 16px 48px; }
-  header { text-align:center; padding:24px 0 8px; }
-  .ball { font-size:52px; }
-  h1 { font-size:21px; margin:8px 0 2px; }
+  body { margin:0; font-family:-apple-system,"Malgun Gothic","맑은 고딕",system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.6; }
+  .wrap { max-width:520px; margin:0 auto; padding:18px 16px 44px; }
+  header { text-align:center; padding:16px 0 4px; }
+  .ball { font-size:44px; }
+  h1 { font-size:19px; margin:6px 0 2px; }
   .sub { color:var(--muted); font-size:13px; margin:0; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-top:16px; }
-  .btn { display:block; width:100%; border:0; border-radius:12px; padding:16px; font-size:17px; font-weight:700; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-top:14px; }
+  /* 조출 브리핑 히어로 */
+  .hero { text-align:center; padding:26px 18px; }
+  .hero.none { background:#eef2f0; }
+  .hero.ok   { background:var(--okbg); border-color:#bfe6cb; }
+  .hero.warn { background:var(--warnbg); border-color:#f2c6b8; }
+  .hero .big { font-size:26px; font-weight:800; margin:2px 0 6px; }
+  .hero.warn .big { color:var(--warn); }
+  .hero.ok .big { color:var(--green-d); }
+  .hero .detail { font-size:15px; white-space:pre-line; }
+  .hero .when { font-size:12px; color:var(--muted); margin-top:10px; }
+  .btn { display:block; width:100%; border:0; border-radius:12px; padding:14px; font-size:15px; font-weight:700; cursor:pointer; }
   .btn-main { background:var(--green); color:#fff; }
-  .btn-main:active { background:var(--green-d); }
-  .btn-sub { background:#eef2f0; color:var(--green-d); margin-top:10px; font-size:15px; }
-  .btn:disabled { opacity:.5; cursor:default; }
-  #status { font-size:14px; padding:12px 14px; border-radius:10px; margin-top:14px; background:#eef4f0; color:var(--green-d); word-break:keep-all; }
+  .btn-sub { background:#eef2f0; color:var(--green-d); margin-top:9px; font-size:14px; }
+  .btn:disabled { opacity:.5; }
+  #status { font-size:13px; padding:10px 12px; border-radius:10px; margin-top:12px; background:#eef4f0; color:var(--green-d); word-break:keep-all; }
   #status.err { background:#fdecec; color:#b3261e; }
-  #status.ok  { background:#e7f6ec; color:#0b7a3b; }
-  .steps { font-size:13.5px; color:var(--muted); padding-left:18px; margin:6px 0 0; }
+  #status.ok  { background:var(--okbg); color:var(--green); }
+  .label { font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:700; }
+  .steps { font-size:13px; color:var(--muted); padding-left:18px; margin:6px 0 0; }
   .steps li { margin:4px 0; }
   details { margin-top:12px; }
   summary { font-size:13px; color:var(--muted); cursor:pointer; }
-  .sublabel { font-size:12.5px; color:var(--muted); margin:8px 0; }
-  textarea { width:100%; height:110px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:10px; resize:vertical; }
+  textarea { width:100%; height:100px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:10px; }
   .hide { display:none; }
 </style>
 </head>
@@ -44,29 +49,39 @@
 <div class="wrap">
   <header>
     <div class="ball">🎾</div>
-    <h1>화명 테니스장 예약알리미</h1>
-    <p class="sub">이 폰으로 예약 변동 알림을 받습니다</p>
+    <h1>화명 테니스장 조출 알리미</h1>
+    <p class="sub">내일 07~09시 예약(조기출근) 여부</p>
   </header>
 
+  <!-- 조출 브리핑 (핵심) -->
+  <div id="hero" class="card hero none">
+    <div class="big" id="heroBig">불러오는 중…</div>
+    <div class="detail" id="heroDetail"></div>
+    <div class="when" id="heroWhen"></div>
+  </div>
+  <button id="refreshBtn" class="btn btn-sub">새로고침</button>
+
+  <!-- 알림 설정 -->
   <div class="card">
+    <div class="label">알림 설정</div>
     <button id="subscribeBtn" class="btn btn-main">알림 받기</button>
+    <button id="unsubBtn" class="btn btn-sub">알림 해제</button>
     <button id="testBtn" class="btn btn-sub">테스트 알림 (폰 표시 확인)</button>
     <div id="status">준비 중…</div>
-
     <details id="manualBox" class="hide">
-      <summary>자동 등록이 안 되면 여기를 눌러 코드를 복사해 관리자에게 전달</summary>
-      <p class="sublabel">아래 내용을 전부 복사해 관리자에게 보내주세요.</p>
+      <summary>자동 등록이 안 되면 여기를 눌러 코드 복사</summary>
       <textarea id="subJson" readonly></textarea>
       <button id="copyBtn" class="btn btn-sub">코드 복사</button>
     </details>
   </div>
 
   <div class="card">
-    <strong>사용법</strong>
+    <div class="label">안내</div>
     <ol class="steps">
-      <li><b>[알림 받기]</b> 버튼을 누르고 알림을 <b>허용</b>하면 끝입니다.</li>
-      <li>이후 예약이 새로 잡히거나 취소되면 이 폰에 알림이 뜹니다.</li>
-      <li>홈 화면에 추가해두면 더 편합니다(선택).</li>
+      <li><b>Chrome</b>(삼성브라우저 아님)에서 이 페이지를 여세요.</li>
+      <li>[알림 받기] → 허용. 매일 밤 '내일 조출 여부'가 알림으로 옵니다.</li>
+      <li>알림을 놓쳐도, 이 페이지를 열면 최신 결과가 위에 표시됩니다.</li>
+      <li>홈 화면에 추가해두면 앱처럼 편합니다.</li>
     </ol>
   </div>
 </div>
@@ -76,6 +91,7 @@ const statusEl = document.getElementById('status');
 const subscribeBtn = document.getElementById('subscribeBtn');
 const manualBox = document.getElementById('manualBox');
 const subJsonEl = document.getElementById('subJson');
+const hero = document.getElementById('hero');
 
 function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = kind || ''; }
 
@@ -88,13 +104,48 @@ function urlBase64ToUint8Array(base64String) {
   return arr;
 }
 
+// 저장된 최신 조출 브리핑 표시
+async function showLastBriefing() {
+  const big = document.getElementById('heroBig');
+  const detail = document.getElementById('heroDetail');
+  const when = document.getElementById('heroWhen');
+  try {
+    const cache = await caches.open('briefing');
+    const res = await cache.match('/last');
+    if (!res) {
+      hero.className = 'card hero none';
+      big.textContent = '아직 브리핑이 없어요';
+      detail.textContent = '매일 밤 자동으로 여기에 표시됩니다.';
+      when.textContent = '';
+      return;
+    }
+    const d = await res.json();
+    const n = new Date();
+    const todayISO = n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
+    if (d.date && d.date >= todayISO) {
+      // 다가오는 조출
+      hero.className = 'card hero warn';
+      big.textContent = (d.title || '').replace('🎾 ', '');
+      detail.textContent = d.body || '';
+      when.textContent = d.at ? ('받은 시각: ' + new Date(d.at).toLocaleString('ko-KR')) : '';
+    } else {
+      // 예정된 조출 없음
+      hero.className = 'card hero ok';
+      big.textContent = '예정된 조출 없음';
+      detail.textContent = d.date ? ('최근 조출: ' + d.date) : '아직 조출 알림이 없습니다.';
+      when.textContent = d.at ? ('마지막 알림: ' + new Date(d.at).toLocaleString('ko-KR')) : '';
+    }
+  } catch (e) {
+    big.textContent = '표시 오류';
+    detail.textContent = String(e);
+  }
+}
+
 async function sendToRelay(sub) {
   if (!RELAY_POST_URL || RELAY_POST_URL.indexOf('여기에') === 0) return false;
   try {
-    // Apps Script 는 CORS 프리플라이트를 피하려 text/plain + no-cors 로 보낸다(전송 전용).
     await fetch(RELAY_POST_URL, {
-      method: 'POST',
-      mode: 'no-cors',
+      method: 'POST', mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub),
     });
@@ -108,12 +159,9 @@ function showManual(sub) {
 }
 
 async function init() {
+  showLastBriefing();
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    setStatus('이 브라우저는 알림을 지원하지 않습니다. Chrome/삼성 인터넷으로 열어주세요.', 'err');
-    subscribeBtn.disabled = true; return;
-  }
-  if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.indexOf('여기에') === 0) {
-    setStatus('설정 준비 중입니다. (관리자 설정 필요)', 'err');
+    setStatus('이 브라우저는 알림을 지원하지 않습니다. Chrome 으로 열어주세요.', 'err');
     subscribeBtn.disabled = true; return;
   }
   try {
@@ -121,11 +169,13 @@ async function init() {
     const existing = await reg.pushManager.getSubscription();
     if (existing) {
       await sendToRelay(existing);
-      setStatus('이미 알림이 켜져 있습니다. 그대로 두시면 됩니다.', 'ok');
+      setStatus('알림이 켜져 있습니다.', 'ok');
       subscribeBtn.textContent = '알림 다시 등록';
     } else {
       setStatus('아래 [알림 받기]를 눌러주세요.');
     }
+    // SW 활성 후 다시 한 번 최신 표시
+    setTimeout(showLastBriefing, 500);
   } catch (e) {
     setStatus('초기화 실패: ' + e.message + ' (HTTPS 주소로 열어야 합니다)', 'err');
   }
@@ -146,12 +196,8 @@ async function subscribe() {
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
     const sent = await sendToRelay(sub);
-    if (sent) {
-      setStatus('✅ 알림이 켜졌습니다! 이제 이 폰으로 예약 변동을 받아보실 수 있어요.', 'ok');
-    } else {
-      setStatus('알림은 켜졌지만 자동 등록에 실패했어요. 아래에서 코드를 복사해 관리자에게 전달해 주세요.', 'err');
-      showManual(sub);
-    }
+    if (sent) setStatus('✅ 알림이 켜졌습니다!', 'ok');
+    else { setStatus('알림은 켜졌지만 자동 등록 실패 — 아래 코드를 관리자에게 전달하세요.', 'err'); showManual(sub); }
     subscribeBtn.textContent = '알림 다시 등록';
   } catch (e) {
     setStatus('등록 실패: ' + e.message, 'err');
@@ -161,20 +207,34 @@ async function subscribe() {
 }
 
 subscribeBtn.addEventListener('click', subscribe);
-document.getElementById('copyBtn').addEventListener('click', async () => {
-  subJsonEl.select();
-  try { await navigator.clipboard.writeText(subJsonEl.value); setStatus('복사됨! 관리자에게 전달하세요.', 'ok'); }
-  catch (_) { document.execCommand('copy'); setStatus('복사됨! 관리자에게 전달하세요.', 'ok'); }
+document.getElementById('unsubBtn').addEventListener('click', async () => {
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await sub.unsubscribe();
+      setStatus('알림을 해제했습니다. 다시 받으려면 [알림 받기]를 누르세요.', 'ok');
+      subscribeBtn.textContent = '알림 받기';
+    } else {
+      setStatus('현재 구독 중이 아닙니다.', 'ok');
+    }
+  } catch (e) { setStatus('해제 실패: ' + e.message, 'err'); }
 });
-
+document.getElementById('refreshBtn').addEventListener('click', showLastBriefing);
 document.getElementById('testBtn').addEventListener('click', async () => {
   try {
     if (Notification.permission !== 'granted') { setStatus('먼저 [알림 받기]로 권한을 허용해 주세요.', 'err'); return; }
     const reg = await navigator.serviceWorker.ready;
     await reg.showNotification('🎾 테스트 알림', { body: '이게 보이면 폰의 알림 표시는 정상입니다.', icon: './icon.png', tag: 'test', renotify: true });
-    setStatus('테스트 알림을 띄우고 있습니다. 폰 화면/알림창을 확인하세요.', 'ok');
+    setStatus('테스트 알림을 띄웠습니다. 폰 화면/알림창을 확인하세요.', 'ok');
   } catch (e) { setStatus('테스트 알림 실패: ' + e.message, 'err'); }
 });
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  subJsonEl.select();
+  try { await navigator.clipboard.writeText(subJsonEl.value); setStatus('복사됨!', 'ok'); }
+  catch (_) { document.execCommand('copy'); setStatus('복사됨!', 'ok'); }
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden) showLastBriefing(); });
 
 init();
 </script>
