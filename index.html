@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b7a3b">
+<title>화명 테니스장 예약알리미</title>
+<script>
+  /* ===== 설정 — 관리자(당신)가 채우는 곳 ===== */
+  // 1) gen_vapid.py 실행 후 출력된 '공개키'
+  const VAPID_PUBLIC_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghLCzL+p+Etph1r+9
+t9R68YaRFJNJ4H8LrClC7CZbKRqhRANCAAT0D6qKWIxEh/0JGf183qGm7gaxlkJi
+cqiSIKOAgUacO8KjCCMqGIPmqgfW7mMO7LDzkG/GTLLhhf7wktJybGOM";
+  // 2) 앱스스크립트 배포 후 받은 웹앱 URL(.../exec). 비워두면 수동(코드 복사) 모드로 동작.
+  const RELAY_POST_URL   = "https://script.google.com/macros/s/AKfycbwPo3Iba5PZauiZ8QGGFyQeC1d_iiy-FoP87wHTIew-zWTt653FSbfKoogI_STxdOGJ/exec";
+</script>
+<style>
+  :root { --green:#0b7a3b; --green-d:#095e2e; --bg:#f4f6f5; --card:#fff; --line:#e3e7e5; --text:#1c2620; --muted:#6b7770; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,"Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+         background:var(--bg); color:var(--text); line-height:1.6; }
+  .wrap { max-width:520px; margin:0 auto; padding:20px 16px 48px; }
+  header { text-align:center; padding:24px 0 8px; }
+  .ball { font-size:52px; }
+  h1 { font-size:21px; margin:8px 0 2px; }
+  .sub { color:var(--muted); font-size:13px; margin:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-top:16px; }
+  .btn { display:block; width:100%; border:0; border-radius:12px; padding:16px; font-size:17px; font-weight:700; cursor:pointer; }
+  .btn-main { background:var(--green); color:#fff; }
+  .btn-main:active { background:var(--green-d); }
+  .btn-sub { background:#eef2f0; color:var(--green-d); margin-top:10px; font-size:15px; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  #status { font-size:14px; padding:12px 14px; border-radius:10px; margin-top:14px; background:#eef4f0; color:var(--green-d); word-break:keep-all; }
+  #status.err { background:#fdecec; color:#b3261e; }
+  #status.ok  { background:#e7f6ec; color:#0b7a3b; }
+  .steps { font-size:13.5px; color:var(--muted); padding-left:18px; margin:6px 0 0; }
+  .steps li { margin:4px 0; }
+  details { margin-top:12px; }
+  summary { font-size:13px; color:var(--muted); cursor:pointer; }
+  .sublabel { font-size:12.5px; color:var(--muted); margin:8px 0; }
+  textarea { width:100%; height:110px; font-size:11px; font-family:monospace; border:1px solid var(--line); border-radius:10px; padding:10px; resize:vertical; }
+  .hide { display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="ball">🎾</div>
+    <h1>화명 테니스장 예약알리미</h1>
+    <p class="sub">이 폰으로 예약 변동 알림을 받습니다</p>
+  </header>
+
+  <div class="card">
+    <button id="subscribeBtn" class="btn btn-main">알림 받기</button>
+    <div id="status">준비 중…</div>
+
+    <details id="manualBox" class="hide">
+      <summary>자동 등록이 안 되면 여기를 눌러 코드를 복사해 관리자에게 전달</summary>
+      <p class="sublabel">아래 내용을 전부 복사해 관리자에게 보내주세요.</p>
+      <textarea id="subJson" readonly></textarea>
+      <button id="copyBtn" class="btn btn-sub">코드 복사</button>
+    </details>
+  </div>
+
+  <div class="card">
+    <strong>사용법</strong>
+    <ol class="steps">
+      <li><b>[알림 받기]</b> 버튼을 누르고 알림을 <b>허용</b>하면 끝입니다.</li>
+      <li>이후 예약이 새로 잡히거나 취소되면 이 폰에 알림이 뜹니다.</li>
+      <li>홈 화면에 추가해두면 더 편합니다(선택).</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const statusEl = document.getElementById('status');
+const subscribeBtn = document.getElementById('subscribeBtn');
+const manualBox = document.getElementById('manualBox');
+const subJsonEl = document.getElementById('subJson');
+
+function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = kind || ''; }
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function sendToRelay(sub) {
+  if (!RELAY_POST_URL || RELAY_POST_URL.indexOf('여기에') === 0) return false;
+  try {
+    // Apps Script 는 CORS 프리플라이트를 피하려 text/plain + no-cors 로 보낸다(전송 전용).
+    await fetch(RELAY_POST_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(sub.toJSON ? sub.toJSON() : sub),
+    });
+    return true;
+  } catch (e) { return false; }
+}
+
+function showManual(sub) {
+  subJsonEl.value = JSON.stringify(sub.toJSON ? sub.toJSON() : sub, null, 2);
+  manualBox.classList.remove('hide');
+}
+
+async function init() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    setStatus('이 브라우저는 알림을 지원하지 않습니다. Chrome/삼성 인터넷으로 열어주세요.', 'err');
+    subscribeBtn.disabled = true; return;
+  }
+  if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY.indexOf('여기에') === 0) {
+    setStatus('설정 준비 중입니다. (관리자 설정 필요)', 'err');
+    subscribeBtn.disabled = true; return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) {
+      await sendToRelay(existing);
+      setStatus('이미 알림이 켜져 있습니다. 그대로 두시면 됩니다.', 'ok');
+      subscribeBtn.textContent = '알림 다시 등록';
+    } else {
+      setStatus('아래 [알림 받기]를 눌러주세요.');
+    }
+  } catch (e) {
+    setStatus('초기화 실패: ' + e.message + ' (HTTPS 주소로 열어야 합니다)', 'err');
+  }
+}
+
+async function subscribe() {
+  subscribeBtn.disabled = true;
+  setStatus('알림 권한 요청 중…');
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      setStatus('알림이 거부되었습니다. 브라우저 설정에서 알림을 허용해 주세요.', 'err');
+      subscribeBtn.disabled = false; return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    const sent = await sendToRelay(sub);
+    if (sent) {
+      setStatus('✅ 알림이 켜졌습니다! 이제 이 폰으로 예약 변동을 받아보실 수 있어요.', 'ok');
+    } else {
+      setStatus('알림은 켜졌지만 자동 등록에 실패했어요. 아래에서 코드를 복사해 관리자에게 전달해 주세요.', 'err');
+      showManual(sub);
+    }
+    subscribeBtn.textContent = '알림 다시 등록';
+  } catch (e) {
+    setStatus('등록 실패: ' + e.message, 'err');
+  } finally {
+    subscribeBtn.disabled = false;
+  }
+}
+
+subscribeBtn.addEventListener('click', subscribe);
+document.getElementById('copyBtn').addEventListener('click', async () => {
+  subJsonEl.select();
+  try { await navigator.clipboard.writeText(subJsonEl.value); setStatus('복사됨! 관리자에게 전달하세요.', 'ok'); }
+  catch (_) { document.execCommand('copy'); setStatus('복사됨! 관리자에게 전달하세요.', 'ok'); }
+});
+
+init();
+</script>
+</body>
+</html>
