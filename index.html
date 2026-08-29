@@ -78,8 +78,8 @@
   <div class="card">
     <div class="label">안내</div>
     <ol class="steps">
-      <li>기본 브라우저에서 이 페이지를 여세요.</li>
-      <li>[알림 받기] → 허용. 평일 09:00 조출 발생 시 '내일 조출 여부'가 알림으로 옵니다.(월요일 경우, 일요일 09:00 알림발송)</li>
+      <li><b>Chrome</b>(삼성브라우저 아님)에서 이 페이지를 여세요.</li>
+      <li>[알림 받기] → 허용. 매일 밤 '내일 조출 여부'가 알림으로 옵니다.</li>
       <li>알림을 놓쳐도, 이 페이지를 열면 최신 결과가 위에 표시됩니다.</li>
       <li>홈 화면에 추가해두면 앱처럼 편합니다.</li>
     </ol>
@@ -135,10 +135,16 @@ function renderBriefing(d) {
   }
   const dt = new Date(d.date + 'T00:00:00');
   const md = (dt.getMonth() + 1) + '/' + dt.getDate() + '(' + WK[dt.getDay()] + ')';
+  // '확인 불가'(예약 마감으로 조회 불가)는 '없음'과 구분 — 오해 방지
+  const unavailable = !d.hasEarly && (d.body || '').indexOf('확인 불가') >= 0;
   if (d.hasEarly) {
     hero.className = 'card hero warn';
     big.textContent = md + ' 조출 있음 ⚠️';
     detail.textContent = (d.body || '') + '\n조기출근 준비하세요.';
+  } else if (unavailable) {
+    hero.className = 'card hero none';
+    big.textContent = md + ' 확인 불가';
+    detail.textContent = d.body || '예약 마감으로 조회할 수 없습니다.';
   } else {
     hero.className = 'card hero ok';
     big.textContent = md + ' 조출 없음';
